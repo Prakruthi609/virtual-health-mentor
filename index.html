@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Health Mentor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-pink-100 to-purple-200">
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+    // Mock Backend (Simulates MongoDB + Express with localStorage)
+    const MockAPI = {
+      // Sample data for meals, workouts, and mindset tips
+      meals: {
+        vegetarian: [
+          { time: 'Breakfast', name: 'Oatmeal with Berries', calories: 300 },
+          { time: 'Lunch', name: 'Quinoa Salad with Veggies', calories: 400 },
+          { time: 'Dinner', name: 'Lentil Curry with Rice', calories: 500 },
+          { time: 'Snack', name: 'Greek Yogurt with Honey', calories: 150 },
+        ],
+        nonVegetarian: [
+          { time: 'Breakfast', name: 'Egg Scramble with Toast', calories: 350 },
+          { time: 'Lunch', name: 'Grilled Chicken Wrap', calories: 450 },
+          { time: 'Dinner', name: 'Salmon with Roasted Veggies', calories: 550 },
+          { time: 'Snack', name: 'Almonds and Cheese', calories: 200 },
+        ],
+      },
+      workouts: {
+        beginner: [
+          { name: '20-min Walk', description: 'Brisk walk in the park', duration: '20 mins' },
+          { name: 'Bodyweight Squats', description: '3 sets of 10 reps', duration: '10 mins' },
+          { name: 'Stretching', description: 'Full-body stretch', duration: '10 mins' },
+        ],
+        intermediate: [
+          { name: '30-min Jog', description: 'Steady pace run', duration: '30 mins' },
+          { name: 'Push-ups', description: '3 sets of 15 reps', duration: '10 mins' },
+          { name: 'Plank', description: '3 sets of 30 seconds', duration: '10 mins' },
+        ],
+      },
+      mindsetTips: [
+        { quote: 'You are stronger than you think!', exercise: 'Write 3 things you’re grateful for.' },
+        { quote: 'Progress, not perfection!', exercise: 'Meditate for 5 minutes.' },
+        { quote: 'Shine bright, you’ve got this!', exercise: 'Take 10 deep breaths.' },
+      ],
+      // User management
+      saveUser: (name, goal, dietPreference) => {
+        const user = { id: Date.now(), name, goal, dietPreference };
+        localStorage.setItem('user', JSON.stringify(user));
+        return user;
+      },
+      getUser: () => {
+        return JSON.parse(localStorage.getItem('user'));
+      },
+      // Progress tracking
+      saveProgress: (userId, date, weight, mood, completedTasks) => {
+        const progress = JSON.parse(localStorage.getItem('progress') || '[]');
+        const entry = { userId, date, weight, mood, completedTasks };
+        progress.push(entry);
+        localStorage.setItem('progress', JSON.stringify(progress));
+        return entry;
+      },
+      getProgress: (userId) => {
+        const progress = JSON.parse(localStorage.getItem('progress') || '[]');
+        return progress.filter(p => p.userId === userId);
+      },
+      // Get daily plan
+      getDailyPlan: (dietPreference, fitnessLevel) => {
+        const mealPlan = MockAPI.meals[dietPreference] || MockAPI.meals.vegetarian;
+        const workoutPlan = MockAPI.workouts[fitnessLevel] || MockAPI.workouts.beginner;
+        const mindsetTip = MockAPI.mindsetTips[Math.floor(Math.random() * MockAPI.mindsetTips.length)];
+        return { mealPlan, workoutPlan, mindsetTip };
+      },
+    };
+
+    // React Components
+    function App() {
+      const [user, setUser] = React.useState(MockAPI.getUser());
+      const [view, setView] = React.useState(user ? 'dashboard' : 'welcome');
+
+      return (
+        <div className="min-h-screen">
+          {view === 'welcome' && <Welcome setUser={setUser} setView={setView} />}
+          {view === 'dashboard' && <Dashboard user={user} setView={setView} />}
+          {view === 'progress' && <Progress user={user} setView={setView} />}
+        </div>
+      );
+    }
+
+    function Welcome({ setUser, setView }) {
+      const [name, setName] = React.useState('');
+      const [goal, setGoal] = React.useState('');
+      const [dietPreference, setDietPreference] = React.useState('vegetarian');
+      const [error, setError] = React.useState('');
+
+      const handleStart = () => {
+        if (name && goal) {
+          const user = MockAPI.saveUser(name, goal, dietPreference);
+          setUser(user);
+          setView('dashboard');
+          setError('');
+        } else {
+          setError('Please fill all fields');
+        }
+      };
+
+      return (
+        <div className="container mx-auto p-6 text-center">
+          <h1 className="text-4xl font-bold text-purple-700 mb-4">Your Virtual Health Mentor</h1>
+          <p className="text-lg text-gray-700 mb-6">Let’s kickstart your journey to a healthier you, honey!</p>
+          {error && <p className="text-red-500 mb-4">{error}</p>}
+          <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Your Name"
+              className="w-full p-3 mb-4 border rounded-lg text-gray-700"
+            />
+            <select
+              value={goal}
+              onChange={e => setGoal(e.target.value)}
+              className="w-full p-3 mb-4 border rounded-lg text-gray-700"
+            >
+              <option value="">Select Goal</option>
+              <option value="weightLoss">Weight Loss</option>
+              <option value="muscleGain">Muscle Gain</option>
+              <option value="overallHealth">Overall Health</option>
+            </select>
+            <select
+              value={dietPreference}
+              onChange={e => setDietPreference(e.target.value)}
+              className="w-full p-3 mb-4 border rounded-lg text-gray-700"
+            >
+              <option value="vegetarian">Vegetarian</option>
+              <option value="nonVegetarian">Non-Vegetarian</option>
+            </select>
+            <button
+              onClick={handleStart}
+              className="w-full bg-pink-500 text-white p-3 rounded-lg hover:bg-pink-600"
+            >
+              Start My Journey
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Navbar({ user, setView }) {
+      return (
+        <nav className="bg-purple-700 text-white p-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Health Mentor</h1>
+          <div>
+            <span className="mr-4">Hey, {user.name}!</span>
+            <button
+              onClick={() => setView('dashboard')}
+              className="mr-2 bg-green-500 px-3 py-1 rounded-lg hover:bg-green-600"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setView('progress')}
+              className="mr-2 bg-yellow-500 px-3 py-1 rounded-lg hover:bg-yellow-600"
+            >
+              Progress
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem('user');
+                localStorage.removeItem('progress');
+                setView('welcome');
+              }}
+              className="bg-red-500 px-3 py-1 rounded-lg hover:bg-red-600"
+            >
+              Reset
+            </button>
+          </div>
+        </nav>
+      );
+    }
+
+    function Dashboard({ user, setView }) {
+      const [plan, setPlan] = React.useState(MockAPI.getDailyPlan(
+        user.dietPreference,
+        user.goal === 'weightLoss' ? 'beginner' : 'intermediate'
+      ));
+      const [weight, setWeight] = React.useState('');
+      const [mood, setMood] = React.useState('');
+      const [completedTasks, setCompletedTasks] = React.useState([]);
+      const [error, setError] = React.useState('');
+
+      const handleTrack = () => {
+        if (weight && mood) {
+          MockAPI.saveProgress(user.id, new Date().toISOString().split('T')[0], parseFloat(weight), mood, completedTasks);
+          setWeight('');
+          setMood('');
+          setCompletedTasks([]);
+          setError('');
+        } else {
+          setError('Please fill all fields');
+        }
+      };
+
+      const toggleTask = (task) => {
+        if (completedTasks.includes(task)) {
+          setCompletedTasks(completedTasks.filter(t => t !== task));
+        } else {
+          setCompletedTasks([...completedTasks, task]);
+        }
+      };
+
+      return (
+        <div className="container mx-auto p-6">
+          <Navbar user={user} setView={setView} />
+          <h2 className="text-3xl font-bold text-purple-700 mb-6">Your Daily Plan, {user.name}!</h2>
+          {error && <p className="text-red-500 mb-4">{error}</p>}
+
+          {/* Meal Plan */}
+          <div className="mb-8">
+            <h3 className="text-2xl font-semibold text-green-600 mb-4">Meal Plan</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {plan.mealPlan.map((meal, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+                  <div>
+                    <p className="text-lg font-semibold text-gray-700">{meal.time}</p>
+                    <p className="text-gray-600">{meal.name}</p>
+                    <p className="text-sm text-gray-500">{meal.calories} kcal</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={completedTasks.includes(`meal-${index}`)}
+                    onChange={() => toggleTask(`meal-${index}`)}
+                    className="w-5 h-5"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Workout Routine */}
+          <div className="mb-8">
+            <h3 className="text-2xl font-semibold text-green-600 mb-4">Workout Routine</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {plan.workoutPlan.map((workout, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+                  <div>
+                    <p className="text-lg font-semibold text-gray-700">{workout.name}</p>
+                    <p className="text-gray-600">{workout.description}</p>
+                    <p className="text-sm text-gray-500">{workout.duration}</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={completedTasks.includes(`workout-${index}`)}
+                    onChange={() => toggleTask(`workout-${index}`)}
+                    className="w-5 h-5"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Mindset Tip */}
+          <div className="mb-8">
+            <h3 className="text-2xl font-semibold text-green-600 mb-4">Mindset Boost</h3>
+            <div className="bg-yellow-100 p-6 rounded-lg shadow-md text-center">
+              <p className="text-xl font-semibold text-purple-700 mb-2">"{plan.mindsetTip.quote}"</p>
+              <p className="text-gray-700">Try this: {plan.mindsetTip.exercise}</p>
+              <input
+                type="checkbox"
+                checked={completedTasks.includes('mindset')}
+                onChange={() => toggleTask('mindset')}
+                className="w-5 h-5 mt-2"
+              />
+            </div>
+          </div>
+
+          {/* Track Progress */}
+          <div>
+            <h3 className="text-2xl font-semibold text-green-600 mb-4">Track Your Progress</h3>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <input
+                type="number"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
+                placeholder="Weight (kg)"
+                className="w-full p-3 mb-4 border rounded-lg text-gray-700"
+              />
+              <select
+                value={mood}
+                onChange={e => setMood(e.target.value)}
+                className="w-full p-3 mb-4 border rounded-lg text-gray-700"
+              >
+                <option value="">Select Mood</option>
+                <option value="happy">Happy</option>
+                <option value="neutral">Neutral</option>
+                <option value="stressed">Stressed</option>
+              </select>
+              <button
+                onClick={handleTrack}
+                className="w-full bg-pink-500 text-white p-3 rounded-lg hover:bg-pink-600"
+              >
+                Save Progress
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Progress({ user, setView }) {
+      const progress = MockAPI.getProgress(user.id);
+
+      return (
+        <div className="container mx-auto p-6">
+          <Navbar user={user} setView={setView} />
+          <h2 className="text-3xl font-bold text-purple-700 mb-6">Your Progress</h2>
+          {progress.length === 0 ? (
+            <p className="text-gray-700">No progress tracked yet. Start tracking on the dashboard!</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {progress.map((entry, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-md">
+                  <p className="text-lg font-semibold text-gray-700">{entry.date}</p>
+                  <p className="text-gray-600">Weight: {entry.weight} kg</p>
+                  <p className="text-gray-600">Mood: {entry.mood}</p>
+                  <p className="text-gray-600">Completed Tasks: {entry.completedTasks.length}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Render the App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
